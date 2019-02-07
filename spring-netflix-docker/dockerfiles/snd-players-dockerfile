@@ -1,0 +1,4 @@
+FROM openjdk:11-jre
+ADD snd-players/build/libs/snd-players-1.0.jar snd-players.jar
+EXPOSE 8090
+ENTRYPOINT ["java", "-jar", "snd-players.jar"]

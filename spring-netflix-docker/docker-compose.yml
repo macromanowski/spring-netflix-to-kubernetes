@@ -1,0 +1,65 @@
+version: '3.7'
+services:
+  snd-players:
+    container_name: snd-players
+    build: 
+      context: .
+      dockerfile: dockerfiles/snd-players-dockerfile
+      labels:
+        maintainer: "romanowski.it" 
+    image: snd-players:latest
+    ports:
+      - "8090:8090"
+    depends_on:
+      - db-cassandra-load-keyspace
+      - db-cassandra
+    restart: on-failure
+    environment:
+      SPRING_PROFILES_ACTIVE: default,docker
+    networks:
+      snd_network:
+        ipv4_address: 192.168.100.110
+  db-cassandra:
+    container_name: db-cassandra
+    image: cassandra:3.11.3
+    environment:
+      - CASSANDRA_LISTEN_ADDRESS=192.168.100.101
+    networks:
+      snd_network:
+        ipv4_address: 192.168.100.101
+# based on https://github.com/Netflix/osstracker/blob/master/docker-compose.yml
+  db-cassandra-load-keyspace:
+    container_name: db-cassandra-load-keyspace
+    image: cassandra:3.11.3
+    depends_on:
+      - db-cassandra
+    volumes:
+      - ./cassandra-scheme/scheme.cql:/scheme.cql
+    command: /bin/bash -c "sleep 60 && echo loading cassandra keyspace && cqlsh db-cassandra -f /scheme.cql"
+    environment:
+      CASSANDRA_SEEDS: "db-cassandra"
+    networks:
+      snd_network:
+        ipv4_address: 192.168.100.198
+
+  logspout:
+    image: gliderlabs/logspout:master
+    restart: always
+    ports:
+      - "8000:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      snd_network:
+        ipv4_address: 192.168.100.200
+      
+
+networks:
+  snd_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        -
+          subnet: 192.168.100.100/24
+        
